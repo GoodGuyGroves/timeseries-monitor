@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# Creator: Russell Groves - rgroves@arago.de
+# GitHub: https://github.com/GoodGuyGroves
+# Date: 08/02/19
+# Version: 0.1
+#
+# Description: Use this in conjunction with a cronjob to capture a breakdown of the CPU usage as a timeseries.
+# total used percentage (all of the below summed up)
+# us: % CPU time spent in user space
+# sy: % CPU time spent in kernel space
+# ni: % CPU time spent on low priority processes
+# id: % CPU time spent idle
+# wa: % CPU time spent in wait (on disk)
+# hi: % CPU time spent servicing/handling hardware interrupts
+# si: % CPU time spent servicing/handling software interrupts
+# st: % CPU time stolen from a virtual machine
+# Cron: */10 * * * * /home/support/cpu_usage_breakdown >> /home/support/cpu_usage_breakdown.csv
+#
+
+# This gets the number of cores on the system. Later we tally the total CPU % usage and need to divide by this number.
+num_cores=$(grep -c ^processor /proc/cpuinfo)
+
+# This takes the line from top that lists all the different CPU % usage stats for us, sy, ni, etc
+# and tallys them then divides by the number of cores to get a "true" sense of total CPU % usage
+total_cpu=$(top -bn 1 | awk -v cores="${num_cores}" 'NR>7{s+=$9} END { print s/cores }')
+
+# We print out the date as an epoch, our total CPU % usage along with the breakdown into us, sy, ni, etc.
+printf "$(date +%s), ${total_cpu}, $(awk '{OFS = ", "} { print $2, $4, $6, $8, $10, $12, $14, $16}' <(top -bn1 | sed -n '/Cpu/p'))\n"

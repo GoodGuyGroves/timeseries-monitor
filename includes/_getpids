@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# Creator: Russell Groves - rgroves@arago.de
+# GitHub: https://github.com/GoodGuyGroves
+# Date: 08/02/19
+# Version: 0.1
+#
+# Description: Get's all PID's from a user and all parent/children PID's
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+source "$DIR/../hiro-env"
+#> /dev/null 2>&1
+
+
+get_user_pids () {
+IFS='
+'
+    if [[ ! -z "${ADDITIONAL_USERS}" ]]; then
+    IFS=" " read -r -a temp_users <<< "${ADDITIONAL_USERS}"
+    fi
+    users+=(${temp_users[@]})
+
+    for x in "${users[@]}"; do
+        if [[ ! -z $(getent passwd ${x}) ]]; then
+            for y in $(ps -u ${x} | tail -n +2); do
+                user_pids+=( "$(echo ${y} | awk '{print $1}')" )
+            done
+        fi
+    done
+}
+
+get_parent_pids () {
+    for x in "${user_pids[@]}"; do
+        if [[ $(ps -o ppid= -p ${x}) -ne 1 ]]; then
+            parent_pids+=( "$(ps -o ppid= -p ${x})" )
+        fi
+    done
+}
+
+get_child_pids () {
+    for x in "${child_pids[@]}"; do
+        child_pids+=( "$(pgrep -P ${x})" )
+    done
+}
+
+
+main () {
+    #declare -a users=("arago" "graphit" "zookeeper" "cassandra")
+    declare -a users=("kernoops" "gdm" "syslog" "whoopsie")
+
+    declare -a user_pids
+    get_user_pids
+    declare -a parent_pids
+    get_parent_pids
+    declare -a child_pids
+    get_child_pids
+
+    local IFS=$'\n'
+
+    all_pids=($(for R in "${user_pids[@]}" "${parent_pids[@]}" ; do echo "$R" ; done | xargs | sort -du))
+    IFS=' ' read -r -a all_pids <<< "${all_pids}"
+}
+
+main "${@}"

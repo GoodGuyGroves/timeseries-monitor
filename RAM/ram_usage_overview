@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#
+# Creator: Russell Groves - rgroves@arago.de
+# GitHub: https://github.com/GoodGuyGroves
+# Date: 05/02/19
+# Version: 0.1
+#
+# Description: Use this in conjunction with a cronjob to capture RAM usage as a timeseries. Use the accompanied gnuplot
+# build script thingy to visualise the data.
+# Cron: */10 * * * * /home/support/ram_usage_overview >> /home/support/ram_usage_overview.csv
+#
+# date as epoch, percentage ram used, used ram from 'free', free ram from 'free', available ram from 'free'
+printf "$(date +%s), $(free | awk '{OFS = ", "} FNR == 2 {print $3/$2 * 100.0, $3/1048576, $4/1048576, $7/1048576}'
+)\n"

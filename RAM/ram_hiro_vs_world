@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# Creator: Russell Groves - rgroves@arago.de
+# GitHub: https://github.com/GoodGuyGroves
+# Date: 13/02/19
+# Version: 0.1
+#
+# Description: This script takes a subset of system process PID's and gets their total RAM % usage. From this data we
+# can see the impact our subset of processes have on the system separate from other components that may be running.
+#
+# Usage: cron: */10 * * * * /home/support/ram_hiro_vs_world >> /home/support/ram_hiro_vs_world.csv
+#
+
+set -e
+
+# Source the script that provides us with relevant PID's
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+source "$DIR/../includes/_getpids"
+
+main() {
+    declare -a subset_ram_usage
+    all_pids+=("12076")
+    for x in "${all_pids[@]}"; do
+        # Get the RAM % usage of each PID
+        subset_ram_usage+=( "$(ps -p ${x} -o %mem | tail -n +2 | xargs)" )
+    done
+    subset_total=0
+    for x in "${subset_ram_usage[@]}"; do
+        # Sum up all the PID's RAM % usages
+        subset_total=($(echo "${subset_total} + ${x}" | bc))
+    done
+
+    # Get the total system RAM % usage
+    total_ram_usage=$(free | awk 'FNR == 2 {print $3/$2 * 100.0}')
+    # Get the total system free RAM % (This does not factor swap in, I don't think)
+    total_ram_free=$(free | awk 'FNR == 2 {print $4/$2 * 100.0}')
+    # Calculate what portion of the used RAM is not our subset
+    ram_usage_nosubset=($(echo "${total_ram_usage} - ${subset_total}" | bc))
+
+    # print the date, our subset usage, all other usage, free ram - All as percentages
+    printf "$(date +%s), ${subset_total}, ${total_ram_usage}, ${total_ram_free}\n"
+}
+
+main "${@}"

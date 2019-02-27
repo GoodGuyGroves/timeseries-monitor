@@ -1,0 +1,28 @@
+# Creator: Russell Groves - rgroves@arago.de
+#!/usr/bin/env bash
+#
+# GitHub: https://github.com/GoodGuyGroves
+# Date: 08/02/19
+# Version: 0.1
+#
+# Description: Use this to determine the type of HIRO node, eg. engine, iam, wso2is
+#
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+source "$DIR/../hiro-env" > /dev/null 2>&1
+
+if [[ -z "${HIRO_NODE_TYPE}" ]]; then
+    if [[ $(yum list installed | grep autopilot-wso2is.x86_64) ]]; then
+        yum list installed | grep autopilot-wso2is.x86_64 > /dev/null 2>&1
+        HIRO_NODE_TYPE="iam"
+        printf "HIRO_NODE_TYPE=iam\n" >> "${ENV}"
+    elif [[ $(yum list installed | grep autopilot-engine) ]]; then
+        yum list installed | grep autopilot-engine > /dev/null 2>&1
+        HIRO_NODE_TYPE="engine"
+        printf "HIRO_NODE_TYPE=engine\n" >> "${ENV}"
+    elif [[ $(yum list installed | grep graphit) ]]; then
+        yum list installed | grep graphit > /dev/null 2>&1
+        HIRO_NODE_TYPE="graphit"
+        printf "HIRO_NODE_TYPE=graphit\n" >> "${ENV}"
+    fi
+fi

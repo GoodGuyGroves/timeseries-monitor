@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#
+# Creator: Russell Groves - rgroves@arago.de
+# GitHub: https://github.com/GoodGuyGroves
+# Date: 08/02/19
+# Version: 0.1
+#
+# Description: Use this in conjunction with a cronjob to capture CPU usage as a timeseries.
+# Cron: */10 * * * * /home/support/cpu_loadavg >> /home/support/cpu_loadavg.csv
+#
+
+# Prints out the date followed by the 1min, 5min and 15min load averages
+printf "$(date +%s), $(awk '{OFS = ", "} { print $1, $2, $3}'< /proc/loadavg)\n"

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#
+# Creator: Russell Groves - rgroves@arago.de
+# GitHub: https://github.com/GoodGuyGroves
+# Date: 08/02/19
+# Version: 0.1
+#
+# Description: 
+# Description: This script takes a subset of system process PID's and gets their total CPU % usage. From this data we
+# can see the impact our subset of processes have on the system separate from other components that may be running.
+#
+# Usage: cron: */10 * * * * /home/support/cpu_hiro_vs_world >> /home/support/cpu_hiro_vs_world.csv
+#
+# Note: Normally we should be able to add the CPU usage to the idle amount and it should equate to 100 but since
+# we make multiple calls to top, summing those values may be greater or smaller than 100. This is to be rectified later.
+#
+# TO DO: Extract all data from one top call for better accuracy
+
+set -e
+
+# Source the script that provides us with relevant PID's
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+source "$DIR/../includes/_getpids"
+
+# We need the number of cores to properly calculate CPU % usage
+num_cores=$(grep -c ^processor /proc/cpuinfo)
+
+main() {
+    declare -a subset_cpu_usage
+    for x in "${all_pids[@]}"; do
+        # Get the CPU % usage of each PID
+        subset_cpu_usage+=( "$(top -b -n 1 -p ${x} | tail -n +8 | awk '{ print $9 }' | xargs)" )
+    done
+    subset_total=0
+    for x in "${subset_cpu_usage[@]}"; do
+        # Add all CPU % usages into one variable
+        subset_total=($(echo "${subset_total} + ${x}" | bc))
+    done
+    # Divide the accumulated CPU % usages by the number of cores on our system for a true reflection of CPU % usage
+    subset_total=($(echo "${subset_total} / ${num_cores}" | bc))
+    # Get the complete system CPU % usage for further calculations
+    total_cpu_usage=$(top -bn 1 | awk -v cores="${num_cores}" 'NR>7{s+=$9} END { print s/cores }')
+    # Get the complete system CPU % idle to present with the other data
+    total_cpu_idle=$(top -bn1 | grep '%Cpu(s)' | awk -F',' '{printf "%.2f\n", $4}')
+    cpu_usage_nosubset=($(echo "${total_cpu_usage} - ${subset_total}" | bc))
+    # Here we print the system date, the total of our subset of PID's, the CPU % usage minus our subset and then CPU % idle
+    printf "$(date +%s), ${subset_total}, ${total_cpu_usage}, ${total_cpu_idle}\n"
+}
+
+main "${@}"
